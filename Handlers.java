@@ -114,23 +114,11 @@ public class Handlers {
                         fileOutputStream.close();
 
                         // Create the response message
-                        String responseMessage;
-                        int responseCode;
-
                         if (fileExists) {
-                            responseCode = 200;
-                            responseMessage = "File overwritten successfully";
+                            httpCats(exchange, 200);
                         } else {
-                            responseCode = 201;
-                            responseMessage = "File created successfully";
+                            httpCats(exchange, 201);
                         }
-
-                        // Set the response headers and send the response
-                        exchange.getResponseHeaders().set("Content-Type", "text/plain");
-                        exchange.sendResponseHeaders(responseCode, responseMessage.length());
-                        OutputStream responseBody = exchange.getResponseBody();
-                        responseBody.write(responseMessage.getBytes());
-                        responseBody.close();
                         break;
                     case "DELETE":
                         if (exchange.getRequestMethod().equalsIgnoreCase("DELETE")) {
