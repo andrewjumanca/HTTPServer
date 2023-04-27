@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
+import java.nio.file.Files;
+
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 
@@ -29,8 +31,7 @@ public class Handlers {
                             mimeType = "image/jpeg";    
                         }else {
                             // Unsupported file type
-                            exchange.sendResponseHeaders(404, -1);
-                            exchange.close();
+                            httpCats(exchange, 404);
                             return;
                         }
                         
@@ -60,8 +61,7 @@ public class Handlers {
                             os.close();
                         } else {
                             // File not found
-                            exchange.sendResponseHeaders(404, -1);
-                            exchange.close();
+                            httpCats(exchange, 404);
                         }
                         break;
 
@@ -69,7 +69,7 @@ public class Handlers {
                         file = new File("src/" + requestedFile);
                         if (!file.exists() || file.isDirectory()) {
                             // If the specified file does not exist or is a directory, return a 404 (Not Found) response
-                            exchange.sendResponseHeaders(404, -1);
+                            httpCats(exchange, 404);
                             return;
                         }
                     
@@ -139,38 +139,73 @@ public class Handlers {
                             file = new File("src/" + path);
                             if (file.exists() && file.isFile()) {
                                 if (file.delete()) {
-                                    exchange.sendResponseHeaders(200, 0);
-                                    responseBody = exchange.getResponseBody();
-                                    responseBody.write("File deleted successfully.".getBytes());
-                                    responseBody.close();
+                                    httpCats(exchange, 200);
                                 } else {
-                                    exchange.sendResponseHeaders(500, 0);
-                                    responseBody = exchange.getResponseBody();
-                                    responseBody.write("Failed to delete file.".getBytes());
-                                    responseBody.close();
+                                    httpCats(exchange, 500);
                                 }
                             } else {
-                                exchange.sendResponseHeaders(404, 0);
-                                responseBody = exchange.getResponseBody();
-                                responseBody.write("File not found.".getBytes());
-                                responseBody.close();
+                                httpCats(exchange, 404);
                             }
                         } else {
-                            exchange.sendResponseHeaders(405, 0);
-                            responseBody = exchange.getResponseBody();
-                            responseBody.write("Method not allowed.".getBytes());
-                            responseBody.close();
+                            httpCats(exchange, 405);
+                        }
+                        break;
+                    case "HEAD":
+                        if (requestedFile.endsWith(".html") || requestedFile.endsWith(".htm")) {
+                            mimeType = "text/html";
+                        } else if (requestedFile.endsWith(".txt")) {
+                            mimeType = "text/plain";
+                        } else if (requestedFile.endsWith("") || requestedFile.endsWith(".jpg")) {
+                            mimeType = "image/jpeg";    
+                        }else {
+                            // Unsupported file type
+                            httpCats(exchange, 404);
+                            return;
+                        }
+                        if (requestedFile == "") {
+                            mimeType = "image/jpeg";
+                            file = new File("src/index.html");
+                        } else {
+                            file = new File("src/" + requestedFile);
+                        }
+                        if (file.exists() && !file.isDirectory()) {
+                            String response = "";
+                            exchange.getResponseHeaders().set("Content-Type", mimeType);
+                            exchange.getResponseHeaders().set("Content-Length", Integer.toString(response.length()));
+                            exchange.sendResponseHeaders(200, -1); // Note: -1 for content length as no response body is sent for HEAD request
+                            exchange.close();
+                        } else {
+                            httpCats(exchange, 404);
                         }
                         break;
                     default:
-                        // handle unsupported request
+                        httpCats(exchange, 405);
                         break;
                 }
             } catch(Exception e) {
                 throw new UnsupportedOperationException("Unimplemented method 'handle'");
             }
         }
-        
+
+        public void httpCats(HttpExchange exchange, int errorCode) throws IOException {
+            String ERROR = "https://github.com/andrewjumanca/HTTPServer/blob/main/src/cats/" + errorCode + ".jpg?raw=true";
+            String errorHtml = "<html style=\"height: 100%;\">\n" +
+              "    <head>\n" +
+              "        <meta name=\"viewport\" content=\"width=device-width, minimum-scale=0.1\">\n" +
+              "        <style type=\"text/css\"></style>\n" +
+              "        <title>200</title>\n" +
+              "    </head>\n" +
+              "    <body style=\"margin: 0px; background: #0e0e0e; height: 100%\">\n" +
+              "        <img style=\"display: block; margin: auto;background-color: hsl(0, 0%, 90%);transition: background-color 300ms;\" src=\"" + ERROR + "\">\n" +
+              "    </body>\n" +
+              "</html>\n";
+
+            exchange.sendResponseHeaders(errorCode, errorHtml.length());
+            OutputStream responseBody = exchange.getResponseBody();
+            responseBody.write(errorHtml.getBytes());
+            responseBody.close();
+            exchange.close();
+        }
     }
 }
 
