@@ -1,26 +1,25 @@
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import com.sun.net.httpserver.HttpServer;
+import java.net.ServerSocket;
+import java.net.Socket;
 
 public class HTTPServer {
-	private int port;
-	private HttpServer server;
-
 	public void Start(int port) {
-		try {
-			this.port = port;
-			server = HttpServer.create(new InetSocketAddress("localhost", port), 0);
-			System.out.println("server started at " + port);
-			server.createContext("/", new Handlers.RootHandler());
-			server.setExecutor(null);
-			server.start();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-
-	public void Stop() {
-		server.stop(0);
-		System.out.println("server stopped");
+		try(ServerSocket server = new ServerSocket(port)) {
+			System.out.println("Server listening on port: " + port);
+            Socket socket = null;
+			Handlers.RootHandler rootHandler = new Handlers.RootHandler();
+            while ((socket = server.accept()) != null) {
+                Socket threadSocket = socket;
+                new Thread( () -> {
+					try {
+						rootHandler.handle(threadSocket);
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}).start();
+            }
+        } catch (Exception err) {
+            err.printStackTrace();
+        }
 	}
 }
